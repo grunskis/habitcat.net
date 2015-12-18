@@ -67,7 +67,7 @@ func render(w http.ResponseWriter, activities []activity) {
 func getActivities() []activity {
 	var activities []activity
 
-	db, err := sql.Open("postgres", "dbname=activities sslmode=disable")
+	db, err := sql.Open("postgres", "dbname=activities user=postgres sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
