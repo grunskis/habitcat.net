@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -10,8 +10,8 @@ import (
 )
 
 type activity struct {
-	description string
-	done        int
+	Description string
+	PctDone     int
 }
 
 func main() {
@@ -22,17 +22,46 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	activities := getActivities()
+	render(w, activities)
+}
+
+func render(w http.ResponseWriter, activities []activity) {
+	const tpl = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <title>TODOs</title>
+  </head>
+  <body>
+    <table>
+      {{range .}}
+      <tr>
+        <td>{{.Description}}</td>
+        <td class="pct-done">
+          <div class="progress">
+            <div style="width: {{.PctDone}}%"></div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+  </body>
+</html>`
+
 	w.Header().Set("Content-Type", "text/html")
 
-	fmt.Fprint(w, `<link rel="stylesheet" href="/static/style.css" type="text/css">`)
-
-	fmt.Fprint(w, "<table>")
-	activities := getActivities()
-	for _, activity := range activities {
-		fmt.Fprintf(w, `<tr><td>%s</td><td class="pct-done"><div class="meter"><span style="width: %d%%"></span></div></td></tr>`, activity.description, activity.done)
+	t, err := template.New("webpage").Parse(tpl)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	fmt.Fprint(w, "</table>")
+	err = t.Execute(w, activities)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getActivities() []activity {
@@ -55,7 +84,7 @@ func getActivities() []activity {
 		if err := rows.Scan(&description, &done); err != nil {
 			log.Fatal(err)
 		}
-		activities = append(activities, activity{description: description, done: done})
+		activities = append(activities, activity{Description: description, PctDone: done})
 	}
 	if err := rows.Err(); err != nil {
 		log.Fatal(err)
