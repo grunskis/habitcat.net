@@ -89,12 +89,12 @@ func getActivities() []activity {
 
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "", 405)
+		http.Error(w, "", http.StatusMethodNotAllowed)
 		return
 	}
 	activityUUID := r.URL.Path[len("/update/"):]
 	if len(activityUUID) == 0 {
-		http.Error(w, "", 400)
+		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
