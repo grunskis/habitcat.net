@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 )
 
 type activity struct {
+	Id          string
 	Description string
 	PctDone     int
 }
@@ -25,6 +27,7 @@ func main() {
 	defer db.Close()
 
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/update/", updateHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
 	log.Fatal(http.ListenAndServe(":9999", nil))
@@ -53,6 +56,7 @@ func render(w http.ResponseWriter, activities []activity) {
   <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/script.js"></script>
     <title>TODOs</title>
   </head>
   <body>
@@ -62,9 +66,10 @@ func render(w http.ResponseWriter, activities []activity) {
         <td>{{.Description}}</td>
         <td class="pct-done">
           <div class="progress">
-            <div style="width: {{.PctDone}}%"></div>
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
           </div>
         </td>
+        <td><a href="#" onclick="updateActivityProgress('{{.Id}}')">+</a></td>
       </tr>
       {{end}}
     </table>
@@ -87,22 +92,55 @@ func render(w http.ResponseWriter, activities []activity) {
 func getActivities() []activity {
 	var activities []activity
 
-	rows, err := db.Query(`SELECT description, ROUND(100.0 * points_done / points_total) "pct_done" FROM activities`)
+	query := `SELECT id, description, ROUND(100.0 * points_done / points_total) FROM activities ORDER BY created`
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for rows.Next() {
-		var description string
+		var id, description string
 		var done int
 
-		if err := rows.Scan(&description, &done); err != nil {
+		if err := rows.Scan(&id, &description, &done); err != nil {
 			log.Fatal(err)
 		}
-		activities = append(activities, activity{Description: description, PctDone: done})
+		activities = append(activities, activity{Id: id, Description: description, PctDone: done})
 	}
 	if err := rows.Err(); err != nil {
 		log.Fatal(err)
 	}
 
 	return activities
+}
+
+func updateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "", 405)
+		return
+	}
+	activityUUID := r.URL.Path[len("/update/"):]
+	if len(activityUUID) == 0 {
+		http.Error(w, "", 400)
+		return
+	}
+
+	newPct := updateActivityPoints(activityUUID)
+
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, fmt.Sprint(newPct))
+}
+
+func updateActivityPoints(activityUUID string) int {
+	_, err := db.Exec("UPDATE activities SET points_done = points_done + 1 WHERE id = $1", activityUUID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var pctDone int
+	row := db.QueryRow("SELECT ROUND(100.0 * points_done / points_total) FROM activities WHERE id = $1", activityUUID)
+	if err := row.Scan(&pctDone); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("updated activity:", activityUUID, "new pct:", pctDone)
+	return pctDone
 }
