@@ -7,7 +7,7 @@ activities: main.go
 
 deploy: activities
 	ssh rpi mkdir -p activities
-	scp -r activities static rpi:activities/
+	scp -r activities static templates rpi:activities/
 
 install-server:
 	sudo apt-get install -y postgresql-9.4 postgresql-contrib-9.4

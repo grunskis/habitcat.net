@@ -50,35 +50,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func render(w http.ResponseWriter, activities []activity) {
-	const tpl = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="/static/style.css" type="text/css">
-    <script src="/static/script.js"></script>
-    <title>TODOs</title>
-  </head>
-  <body>
-    <table>
-      {{range .}}
-      <tr>
-        <td>{{.Description}}</td>
-        <td class="pct-done">
-          <div class="progress">
-            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
-          </div>
-        </td>
-        <td><a href="#" onclick="updateActivityProgress('{{.Id}}')">+</a></td>
-      </tr>
-      {{end}}
-    </table>
-  </body>
-</html>`
-
 	w.Header().Set("Content-Type", "text/html")
 
-	t, err := template.New("webpage").Parse(tpl)
+	t, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
