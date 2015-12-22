@@ -14,11 +14,31 @@ type activity struct {
 	PctDone     int
 }
 
+var db *sql.DB
+
 func main() {
+	var err error
+	db, err = createDBConnection()
+	if err != nil {
+		log.Fatalln("opening db connection failed:", err)
+	}
+	defer db.Close()
+
 	http.HandleFunc("/", handler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
 	log.Fatal(http.ListenAndServe(":9999", nil))
+}
+
+func createDBConnection() (*sql.DB, error) {
+	db, err := sql.Open("postgres", "dbname=activities user=postgres sslmode=disable")
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -66,12 +86,6 @@ func render(w http.ResponseWriter, activities []activity) {
 
 func getActivities() []activity {
 	var activities []activity
-
-	db, err := sql.Open("postgres", "dbname=activities user=postgres sslmode=disable")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
 
 	rows, err := db.Query(`SELECT description, ROUND(100.0 * points_done / points_total) "pct_done" FROM activities`)
 	if err != nil {
