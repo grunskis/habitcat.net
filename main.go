@@ -30,6 +30,7 @@ func main() {
 	http.HandleFunc("/update/", updateHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
+	log.Println("Server listening on http://0.0.0.0:9999")
 	log.Fatal(http.ListenAndServe(":9999", nil))
 }
 
