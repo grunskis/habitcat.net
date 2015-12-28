@@ -8,7 +8,7 @@ activities: main.go
 deploy: activities
 	ssh rpi mkdir -p activities
 	ssh rpi pkill activities || true
-	scp -r activities static templates rpi:activities/
+	scp -r activities static templates sql_migrations rpi:activities/
 	ssh rpi "cd activities && dtach -n /tmp/activities.socket ./activities >> /tmp/activities.log 2>&1"
 
 install-server:

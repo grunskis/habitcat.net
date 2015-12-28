@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -14,6 +15,7 @@ type activity struct {
 	Id          string
 	Description string
 	PctDone     int
+	Expires     *time.Time
 }
 
 var db *sql.DB
@@ -46,11 +48,27 @@ func createDBConnection() (*sql.DB, error) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
 	activities := getActivities()
-	render(w, activities)
+	var inProgressActivities, doneOrExpiredActivities []activity
+	for _, a := range activities {
+		if a.PctDone >= 100 || (a.Expires != nil && now.After(*a.Expires)) {
+			doneOrExpiredActivities = append(doneOrExpiredActivities, a)
+		} else {
+			inProgressActivities = append(inProgressActivities, a)
+		}
+	}
+	context := struct {
+		InProgress    []activity
+		DoneOrExpired []activity
+	}{
+		inProgressActivities,
+		doneOrExpiredActivities,
+	}
+	render(w, context)
 }
 
-func render(w http.ResponseWriter, activities []activity) {
+func render(w http.ResponseWriter, activities interface{}) {
 	w.Header().Set("Content-Type", "text/html")
 
 	t, err := template.ParseFiles("templates/index.html")
@@ -67,7 +85,9 @@ func render(w http.ResponseWriter, activities []activity) {
 func getActivities() []activity {
 	var activities []activity
 
-	query := `SELECT id, description, ROUND(100.0 * points_done / points_total) FROM activities ORDER BY created`
+	query := `SELECT id, description, ROUND(100.0 * points_done / points_total), expires 
+FROM activities 
+ORDER BY created`
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -75,11 +95,17 @@ func getActivities() []activity {
 	for rows.Next() {
 		var id, description string
 		var done int
+		var expires *time.Time
 
-		if err := rows.Scan(&id, &description, &done); err != nil {
+		if err := rows.Scan(&id, &description, &done, &expires); err != nil {
 			log.Fatal(err)
 		}
-		activities = append(activities, activity{Id: id, Description: description, PctDone: done})
+		activities = append(activities, activity{
+			Id:          id,
+			Description: description,
+			PctDone:     done,
+			Expires:     expires,
+		})
 	}
 	if err := rows.Err(); err != nil {
 		log.Fatal(err)

@@ -7,8 +7,9 @@
     <title>TODOs</title>
   </head>
   <body>
+    <h2>In progress</h2>
     <table>
-      {{range .}}
+      {{range .InProgress}}
       <tr>
         <td>{{.Description}}</td>
         <td class="pct-done">
@@ -17,6 +18,20 @@
           </div>
         </td>
         <td><a href="#" onclick="updateActivityProgress('{{.Id}}')">+</a></td>
+      </tr>
+      {{end}}
+    </table>
+
+    <h2>Done or expired</h2>
+    <table>
+      {{range .DoneOrExpired}}
+      <tr>
+        <td>{{.Description}}</td>
+        <td class="pct-done">
+          <div class="progress">
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
+          </div>
+        </td>
       </tr>
       {{end}}
     </table>
