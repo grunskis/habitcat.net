@@ -12,12 +12,15 @@
       {{range .InProgress}}
       <tr>
         <td>{{.Description}}</td>
-        <td class="pct-done">
+        <td class="plus">
+          <button onclick="updateActivityProgress('{{.Id}}')">+1</button>
+        </td>
+        <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">
           <div class="progress">
-            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%">
+            </div>
           </div>
         </td>
-        <td><a href="#" onclick="updateActivityProgress('{{.Id}}')">+</a></td>
       </tr>
       {{end}}
     </table>
@@ -27,7 +30,10 @@
       {{range .DoneOrExpired}}
       <tr>
         <td>{{.Description}}</td>
-        <td class="pct-done">
+        <td class="plus">
+          <button disabled="disabled">+1</button>
+        </td>
+        <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">
           <div class="progress">
             <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
           </div>

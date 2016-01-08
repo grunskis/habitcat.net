@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -14,9 +15,18 @@ import (
 type activity struct {
 	Id          string
 	Description string
+	PointsDone  int
+	PointsTotal int
 	PctDone     int
 	Expires     *time.Time
+	Modified    time.Time
 }
+
+type byModified []activity
+
+func (m byModified) Len() int           { return len(m) }
+func (m byModified) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m byModified) Less(i, j int) bool { return (m[i].Modified).Before(m[j].Modified) }
 
 var db *sql.DB
 
@@ -65,6 +75,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		inProgressActivities,
 		doneOrExpiredActivities,
 	}
+	sort.Sort(byModified(context.InProgress))
+	sort.Sort(byModified(context.DoneOrExpired))
 	render(w, context)
 }
 
@@ -85,26 +97,36 @@ func render(w http.ResponseWriter, activities interface{}) {
 func getActivities() []activity {
 	var activities []activity
 
-	query := `SELECT id, description, ROUND(100.0 * points_done / points_total), expires 
-FROM activities 
-ORDER BY created`
+	query := `SELECT id,
+                         description,
+                         ROUND(100.0 * points_done / points_total),
+                         expires,
+                         points_done,
+                         points_total,
+                         modified FROM activities`
+
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for rows.Next() {
 		var id, description string
-		var done int
+		var pctDone, pointsDone, pointsTotal int
 		var expires *time.Time
+		var modified time.Time
 
-		if err := rows.Scan(&id, &description, &done, &expires); err != nil {
+		if err := rows.Scan(&id, &description, &pctDone, &expires,
+			&pointsDone, &pointsTotal, &modified); err != nil {
+
 			log.Fatal(err)
 		}
 		activities = append(activities, activity{
 			Id:          id,
 			Description: description,
-			PctDone:     done,
+			PctDone:     pctDone,
 			Expires:     expires,
+			PointsDone:  pointsDone,
+			PointsTotal: pointsTotal,
 		})
 	}
 	if err := rows.Err(); err != nil {

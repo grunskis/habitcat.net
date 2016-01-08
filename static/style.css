@@ -1,5 +1,5 @@
 * {
-    font-size: 28px;
+    font-size: 16px;
 }
 
 body {
@@ -20,7 +20,7 @@ td {
 }
 
 td.pct-done {
-    width: 400px;
+    width: 25%;
 }
 
 .progress {
@@ -31,4 +31,9 @@ td.pct-done {
 .progress > div {
     background-color: green;
     height: 20px;
+}
+
+.plus {
+    width: 50px;
+    text-align: center;
 }
