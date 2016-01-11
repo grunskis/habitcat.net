@@ -40,7 +40,10 @@ func main() {
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/update/", updateHandler)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+
+	staticFileServer := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	http.Handle("/static/", staticFileServer)
+	http.Handle("/favicon.ico", staticFileServer)
 
 	log.Println("Server listening on http://0.0.0.0:9999")
 	log.Fatal(http.ListenAndServe(":9999", nil))
@@ -75,8 +78,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		inProgressActivities,
 		doneOrExpiredActivities,
 	}
-	sort.Sort(byModified(context.InProgress))
-	sort.Sort(byModified(context.DoneOrExpired))
+	sort.Sort(sort.Reverse(byModified(context.InProgress)))
+	sort.Sort(sort.Reverse(byModified(context.DoneOrExpired)))
 	render(w, context)
 }
 
@@ -127,6 +130,7 @@ func getActivities() []activity {
 			Expires:     expires,
 			PointsDone:  pointsDone,
 			PointsTotal: pointsTotal,
+			Modified:    modified,
 		})
 	}
 	if err := rows.Err(); err != nil {
