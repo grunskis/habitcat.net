@@ -30,9 +30,6 @@
       {{range .DoneOrExpired}}
       <tr>
         <td>{{.Description}}</td>
-        <td class="plus">
-          <button disabled="disabled">+1</button>
-        </td>
         <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">
           <div class="progress">
             <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
