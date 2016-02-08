@@ -1,4 +1,4 @@
-.PHONY: build deploy install-server
+.PHONY: build deploy install-server test test-coverage-html
 
 build: activities
 
@@ -16,3 +16,16 @@ install-server:
 	createdb -U postgres activities
 	psql -U postgres activities < create_all.sql
 	psql -U postgres activities < load_data.sql
+
+
+TEST_DBNAME=gandhi_test
+
+test:
+	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)
+	find sql_migrations -name '*.sql' | xargs cat | psql $(TEST_DBNAME) -f -
+	go test ./... -v -coverprofile=coverage.out
+
+test-coverage-html: coverage.out
+	go tool cover -html=coverage.out
+
+coverage.out: test

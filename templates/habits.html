@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/script.js"></script>
+    <title>Activities</title>
+  </head>
+  <body>
+    <h2>Habits</h2>
+    <table>
+      {{range .}}
+      <tr>
+        <td>{{.Description}}</td>
+        <td class="plus">
+          <button onclick="updateHabitProgress('{{.Id}}')">+1</button>
+        </td>
+        <td class="pct-done" title="{{.Done}} / {{.Todo}}">
+          <div class="progress">
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%">
+            </div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+  </body>
+</html>

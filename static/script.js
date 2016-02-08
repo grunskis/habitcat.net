@@ -25,3 +25,14 @@ function updateActivityProgress(uuid) {
 
     return false;
 }
+
+function updateHabitProgress(uuid) {
+    ajax("POST", "/habits/" + uuid, function (body) {
+        var progress = document.getElementById("done-" + uuid);
+        progress.style.width = body + "%";
+    }, function (statusCode, body) {
+        console.log("fail", statusCode, body);
+    });
+
+    return false;
+}
