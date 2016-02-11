@@ -1,2 +1,1 @@
-Self contained TODOs tracking app. Only external dependancy is
-Postgres driver.
+[![Build Status](https://semaphoreci.com/api/v1/projects/edbdfe74-bab5-43ba-846c-6e0bbfcf5161/694579/badge.svg)](https://semaphoreci.com/grunskis/activities)
