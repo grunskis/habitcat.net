@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"text/template"
-	"time"
 )
 
 const (
@@ -21,7 +21,6 @@ type habit struct {
 	Todo        int
 	Done        int
 	PctDone     int
-	Modified    time.Time
 }
 
 func habitHandler(w http.ResponseWriter, r *http.Request) {
@@ -122,29 +121,35 @@ func habitUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "application/json")
 
-	newPct, err := updateHabitProgress(uuid)
+	h, err := updateHabitProgress(uuid)
 	if err != nil {
 		http.Error(w, "", http.StatusNotFound)
 		return
 	} else {
-		fmt.Fprintf(w, fmt.Sprint(*newPct))
+		b, err := json.Marshal(h)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprint(w, string(b))
 	}
 }
 
-func updateHabitProgress(uuid string) (*int, error) {
-	habit, err := getHabit(uuid)
+func updateHabitProgress(uuid string) (*habit, error) {
+	h, err := getHabit(uuid)
 	if err != nil {
 		return nil, errors.New("habit not found")
 	}
 
 	delta := 1
-	_, err = db.Exec("INSERT INTO habit_progress (habit_id, delta) VALUES ($1, $2)", habit.Id, delta)
+	_, err = db.Exec("INSERT INTO habit_progress (habit_id, delta) VALUES ($1, $2)", h.Id, delta)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	newPctDone := int(float64(habit.Done+delta) / float64(habit.Todo) * 100)
-	return &newPctDone, nil
+	// TODO improve this
+	h.Done = h.Done + delta
+	h.PctDone = int(float64(h.Done) / float64(h.Todo) * 100)
+	return h, nil
 }

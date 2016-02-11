@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -34,7 +35,14 @@ func main() {
 }
 
 func createDBConnection(dbname string) (*sql.DB, error) {
-	dsn := fmt.Sprintf("dbname=%s user=postgres sslmode=disable", dbname)
+	var dsn string
+	_, found := os.LookupEnv("DATABASE_POSTGRESQL_USERNAME")
+	if found {
+		// for running test on semaphore ci
+		dsn = fmt.Sprintf("dbname=%s user=runner password=semaphoredb sslmode=disable", dbname)
+	} else {
+		dsn = fmt.Sprintf("dbname=%s user=postgres sslmode=disable", dbname)
+	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err

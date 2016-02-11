@@ -22,7 +22,8 @@ TEST_DBNAME=gandhi_test
 
 test:
 	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)
-	find sql_migrations -name '*.sql' | xargs cat | psql $(TEST_DBNAME) -f -
+	psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' $(TEST_DBNAME)
+	find sql_migrations -name '*.sql' | sort | xargs cat | psql $(TEST_DBNAME) -f -
 	go test ./... -v -coverprofile=coverage.out
 
 test-coverage-html: coverage.out

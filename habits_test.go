@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -150,12 +151,15 @@ func TestUpdateHabitProgressSuccess(t *testing.T) {
 	id := createHabit("Habit", 2, PeriodWeek, time.Now())
 	defer truncateDatabase()
 
-	newPct, err := updateHabitProgress(id)
+	h, err := updateHabitProgress(id)
 	if err != nil {
 		t.Errorf("Expected err to be nil, found %v", err)
 	}
-	if *newPct != 50 {
-		t.Errorf("Expected newPct to be 50, found %v", *newPct)
+	if h.PctDone != 50 {
+		t.Errorf("Expected PctDone to be 50, found %v", h.PctDone)
+	}
+	if h.Done != 1 {
+		t.Errorf("Expected Done to be 1, found %v", h.Done)
 	}
 }
 
@@ -188,11 +192,16 @@ func TestHabitUpdateHandlerSuccess(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %v", w.Code)
 	}
-	if w.Body.String() != "50" {
-		t.Errorf("Expected 50, got %v", w.Body.String())
+	if w.Header().Get("Content-Type") != "application/json" {
+		t.Errorf("Expected \"application/json\", got %v", w.Header().Get("Content-Type"))
 	}
-	if w.Header().Get("Content-Type") != "text/plain" {
-		t.Errorf("Expected \"text/plain\", got %v", w.Header().Get("Content-Type"))
+	var h habit
+	err = json.Unmarshal(w.Body.Bytes(), &h)
+	if err != nil {
+		t.Error(err)
+	}
+	if h.PctDone != 50 {
+		t.Errorf("Expected 50, got %v", h.PctDone)
 	}
 }
 

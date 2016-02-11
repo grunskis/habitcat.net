@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/style.css" type="text/css">
     <script src="/static/script.js"></script>
-    <title>Activities</title>
+    <title>Habits</title>
   </head>
   <body>
     <h2>Habits</h2>
@@ -15,7 +15,7 @@
         <td class="plus">
           <button onclick="updateHabitProgress('{{.Id}}')">+1</button>
         </td>
-        <td class="pct-done" title="{{.Done}} / {{.Todo}}">
+        <td id="pct-done-{{.Id}}" class="pct-done" title="{{.Done}} / {{.Todo}}">
           <div class="progress">
             <div id="done-{{.Id}}" style="width: {{.PctDone}}%">
             </div>
