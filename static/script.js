@@ -53,6 +53,12 @@ events.subscribe('progressUpdated', function (uuid, progress) {
     e.title = progress.Done + " / " + progress.Todo;
 });
 
+events.subscribe('progressUpdated', function () {
+    // update weekly done
+    var e = document.getElementById("this-week-done");
+    e.innerHTML = parseInt(e.innerHTML, 10) + 1
+});
+
 function updateActivityProgress(uuid) {
     ajax("POST", "/update/" + uuid, function (body) {
         var progress = document.getElementById("done-" + uuid);

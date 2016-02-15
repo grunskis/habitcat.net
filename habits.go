@@ -32,7 +32,17 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	habits := getHabits()
-	err = t.Execute(w, habits)
+	done, todo := totalPointsThisWeek(habits)
+	context := struct {
+		Habits       []habit
+		ThisWeekDone int
+		ThisWeekTodo int
+	}{
+		habits,
+		done,
+		todo,
+	}
+	err = t.Execute(w, context)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -152,4 +162,13 @@ func updateHabitProgress(uuid string) (*habit, error) {
 	h.Done = h.Done + delta
 	h.PctDone = int(float64(h.Done) / float64(h.Todo) * 100)
 	return h, nil
+}
+
+func totalPointsThisWeek(habits []habit) (int, int) {
+	var todo, done int
+	for _, h := range habits {
+		done += h.Done
+		todo += h.Todo
+	}
+	return done, todo
 }

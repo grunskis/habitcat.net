@@ -249,3 +249,16 @@ func TestHabitUpdateHandlerWrongMethod(t *testing.T) {
 		t.Errorf("Expected %v, got %v", http.StatusMethodNotAllowed, w.Code)
 	}
 }
+
+func TestTotalPointsThisWeek(t *testing.T) {
+	habits := []habit{
+		habit{"id1", "description", 2, 1, 50},
+	}
+	done, todo := totalPointsThisWeek(habits)
+	if done != 1 {
+		t.Errorf("Expected 1, got %v", done)
+	}
+	if todo != 2 {
+		t.Errorf("Expected 2, got %v", todo)
+	}
+}

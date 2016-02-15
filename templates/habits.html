@@ -8,8 +8,9 @@
   </head>
   <body>
     <h2>Habits</h2>
+    <h3>Weekly</h3>
     <table>
-      {{range .}}
+      {{range .Habits}}
       <tr>
         <td>{{.Description}}</td>
         <td class="plus">
@@ -24,5 +25,6 @@
       </tr>
       {{end}}
     </table>
+    <p>Progress this week: <span id="this-week-done">{{.ThisWeekDone}}</span> / {{.ThisWeekTodo}}</p>
   </body>
 </html>
