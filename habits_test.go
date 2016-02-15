@@ -262,3 +262,11 @@ func TestTotalPointsThisWeek(t *testing.T) {
 		t.Errorf("Expected 2, got %v", todo)
 	}
 }
+
+func TestCurrentWeekNumber(t *testing.T) {
+	dt := time.Date(2016, time.January, 11, 23, 0, 0, 0, time.UTC)
+	week := currentWeekNumber(dt)
+	if week != 2 {
+		t.Errorf("Expected 2, got %v", week)
+	}
+}

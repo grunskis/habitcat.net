@@ -55,8 +55,24 @@ events.subscribe('progressUpdated', function (uuid, progress) {
 
 events.subscribe('progressUpdated', function () {
     // update weekly done
-    var e = document.getElementById("this-week-done");
-    e.innerHTML = parseInt(e.innerHTML, 10) + 1
+    var eDone = document.getElementById("this-week-done"),
+        eTotal = document.getElementById("this-week-total"),
+        weekDone = parseInt(eDone.innerHTML, 10),
+        weekTotal = parseInt(eTotal.innerHTML, 10);
+
+    weekDone += 1;
+
+    eDone.innerHTML = weekDone;
+
+    // update weekly percentage
+    var e = document.getElementById("done-week");
+    e.style.width = (weekDone / weekTotal * 100) + "%";
+});
+
+events.subscribe('progressUpdated', function (uuid, progress) {
+    // update habit done
+    var e = document.getElementById("points-done-" + uuid);
+    e.innerHTML = progress.Done;
 });
 
 function updateActivityProgress(uuid) {

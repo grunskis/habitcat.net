@@ -8,7 +8,7 @@
   </head>
   <body>
     <h2>Habits</h2>
-    <h3>Weekly</h3>
+    <h3>Week {{.CurrentWeekNumber}}</h3>
     <table>
       {{range .Habits}}
       <tr>
@@ -18,13 +18,25 @@
         </td>
         <td id="pct-done-{{.Id}}" class="pct-done" title="{{.Done}} / {{.Todo}}">
           <div class="progress">
-            <div id="done-{{.Id}}" style="width: {{.PctDone}}%">
-            </div>
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
           </div>
+        </td>
+        <td class="progress-details">
+          <span id="points-done-{{.Id}}">{{.Done}}</span> / {{.Todo}}
         </td>
       </tr>
       {{end}}
+      <tr>
+        <td colspan="2"></td>
+        <td class="pct-done">
+          <div class="progress">
+            <div id="done-week" style="width: {{.ThisWeekPctDone}}%"></div>
+          </div>
+        </td>
+        <td class="progress-details">
+          <span id="this-week-done">{{.ThisWeekDone}}</span> / <span id="this-week-total">{{.ThisWeekTodo}}</span>
+        </td>
+      </tr>
     </table>
-    <p>Progress this week: <span id="this-week-done">{{.ThisWeekDone}}</span> / {{.ThisWeekTodo}}</p>
   </body>
 </html>

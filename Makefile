@@ -1,11 +1,11 @@
-.PHONY: build deploy install-server test test-coverage-html
+.PHONY: build deploy install-server test test-coverage-html clean
 
 build: activities
 
-activities: main.go
+activities: main.go habits.go goals.go
 	env GOOS=linux GOARCH=arm go build
 
-deploy: activities
+deploy: clean activities
 	ssh rpi mkdir -p activities
 	ssh rpi pkill activities || true
 	scp -r activities static templates sql_migrations rpi:activities/
@@ -30,3 +30,6 @@ test-coverage-html: coverage.out
 	go tool cover -html=coverage.out
 
 coverage.out: test
+
+clean:
+	rm -f activities

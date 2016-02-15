@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"text/template"
+	"time"
 )
 
 const (
@@ -34,13 +35,17 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 	habits := getHabits()
 	done, todo := totalPointsThisWeek(habits)
 	context := struct {
-		Habits       []habit
-		ThisWeekDone int
-		ThisWeekTodo int
+		Habits            []habit
+		ThisWeekDone      int
+		ThisWeekTodo      int
+		CurrentWeekNumber int
+		ThisWeekPctDone   int
 	}{
 		habits,
 		done,
 		todo,
+		currentWeekNumber(time.Now()),
+		int(float64(done) / float64(todo) * 100),
 	}
 	err = t.Execute(w, context)
 	if err != nil {
@@ -171,4 +176,9 @@ func totalPointsThisWeek(habits []habit) (int, int) {
 		todo += h.Todo
 	}
 	return done, todo
+}
+
+func currentWeekNumber(t time.Time) int {
+	_, week := t.ISOWeek()
+	return week
 }
