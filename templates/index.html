@@ -4,10 +4,16 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/style.css" type="text/css">
     <script src="/static/script.js"></script>
-    <title>Activities</title>
+    <title>Goals</title>
   </head>
   <body>
-    <h2>In progress</h2>
+    <ul id="menu">
+      <li>Goals</li>
+      <li><a href="/habits">Habits</a></li>
+    </ul>
+
+    <h2>Goals</h2>
+    <h3>In progress</h3>
     <table>
       {{range .InProgress}}
       <tr>
@@ -25,7 +31,7 @@
       {{end}}
     </table>
 
-    <h2>Done or expired</h2>
+    <h3>Done or expired</h3>
     <table>
       {{range .DoneOrExpired}}
       <tr>

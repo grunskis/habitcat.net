@@ -40,3 +40,14 @@ td.progress-details {
     width: 50px;
     text-align: center;
 }
+
+
+ul#menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul#menu li {
+    display: inline;
+}
