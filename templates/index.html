@@ -31,9 +31,9 @@
       {{end}}
     </table>
 
-    <h3>Done or expired</h3>
+    <h3>Done</h3>
     <table>
-      {{range .DoneOrExpired}}
+      {{range .Done}}
       <tr>
         <td>{{.Description}}</td>
         <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">

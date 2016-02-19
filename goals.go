@@ -15,7 +15,6 @@ type activity struct {
 	PointsDone  int
 	PointsTotal int
 	PctDone     int
-	Expires     *time.Time
 	Modified    time.Time
 }
 
@@ -26,25 +25,24 @@ func (m byModified) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m byModified) Less(i, j int) bool { return (m[i].Modified).Before(m[j].Modified) }
 
 func goalHandler(w http.ResponseWriter, r *http.Request) {
-	now := time.Now()
 	activities := getActivities()
-	var inProgressActivities, doneOrExpiredActivities []activity
+	var inProgressActivities, doneActivities []activity
 	for _, a := range activities {
-		if a.PctDone >= 100 || (a.Expires != nil && now.After(*a.Expires)) {
-			doneOrExpiredActivities = append(doneOrExpiredActivities, a)
+		if a.PctDone >= 100 {
+			doneActivities = append(doneActivities, a)
 		} else {
 			inProgressActivities = append(inProgressActivities, a)
 		}
 	}
 	context := struct {
-		InProgress    []activity
-		DoneOrExpired []activity
+		InProgress []activity
+		Done       []activity
 	}{
 		inProgressActivities,
-		doneOrExpiredActivities,
+		doneActivities,
 	}
 	sort.Sort(sort.Reverse(byModified(context.InProgress)))
-	sort.Sort(sort.Reverse(byModified(context.DoneOrExpired)))
+	sort.Sort(sort.Reverse(byModified(context.Done)))
 	render(w, context)
 }
 
@@ -68,7 +66,6 @@ func getActivities() []activity {
 	query := `SELECT id,
                          description,
                          ROUND(100.0 * points_done / points_total),
-                         expires,
                          points_done,
                          points_total,
                          modified FROM activities`
@@ -80,19 +77,15 @@ func getActivities() []activity {
 	for rows.Next() {
 		var id, description string
 		var pctDone, pointsDone, pointsTotal int
-		var expires *time.Time
 		var modified time.Time
 
-		if err := rows.Scan(&id, &description, &pctDone, &expires,
-			&pointsDone, &pointsTotal, &modified); err != nil {
-
+		if err := rows.Scan(&id, &description, &pctDone, &pointsDone, &pointsTotal, &modified); err != nil {
 			log.Fatal(err)
 		}
 		activities = append(activities, activity{
 			Id:          id,
 			Description: description,
 			PctDone:     pctDone,
-			Expires:     expires,
 			PointsDone:  pointsDone,
 			PointsTotal: pointsTotal,
 			Modified:    modified,
