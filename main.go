@@ -13,6 +13,11 @@ import (
 var db *sql.DB
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("$PORT must be set")
+	}
+
 	var err error
 	db, err = createDBConnection("activities")
 	if err != nil {
@@ -30,8 +35,8 @@ func main() {
 	http.Handle("/static/", staticFileServer)
 	http.Handle("/favicon.ico", staticFileServer)
 
-	log.Println("Server listening on http://0.0.0.0:9999")
-	log.Fatal(http.ListenAndServe(":9999", nil))
+	log.Println("Server listening on http://0.0.0.0:" + port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func createDBConnection(dbname string) (*sql.DB, error) {
@@ -41,7 +46,10 @@ func createDBConnection(dbname string) (*sql.DB, error) {
 		// for running test on semaphore ci
 		dsn = fmt.Sprintf("dbname=%s user=runner password=semaphoredb sslmode=disable", dbname)
 	} else {
-		dsn = fmt.Sprintf("dbname=%s user=postgres sslmode=disable", dbname)
+		dsn, found = os.LookupEnv("DATABASE_URL")
+		if !found {
+			dsn = fmt.Sprintf("dbname=%s user=postgres sslmode=disable", dbname)
+		}
 	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {

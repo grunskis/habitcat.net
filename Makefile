@@ -24,7 +24,7 @@ test:
 	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)
 	psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' $(TEST_DBNAME)
 	find sql_migrations -name '*.sql' | sort | xargs cat | psql $(TEST_DBNAME) -f -
-	go test ./... -v -coverprofile=coverage.out
+	go test -v -coverprofile=coverage.out
 
 test-coverage-html: coverage.out
 	go tool cover -html=coverage.out
