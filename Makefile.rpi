@@ -1,0 +1,35 @@
+.PHONY: build deploy install-server test test-coverage-html clean
+
+build: activities
+
+activities: main.go habits.go goals.go
+	env GOOS=linux GOARCH=arm go build
+
+deploy: clean activities
+	ssh rpi mkdir -p activities
+	ssh rpi pkill activities || true
+	scp -r activities static templates sql_migrations rpi:activities/
+	ssh rpi "cd activities && dtach -n /tmp/activities.socket ./activities >> /tmp/activities.log 2>&1"
+
+install-server:
+	sudo apt-get install -y postgresql-9.4 postgresql-contrib-9.4
+	createdb -U postgres activities
+	psql -U postgres activities < create_all.sql
+	psql -U postgres activities < load_data.sql
+
+
+TEST_DBNAME=gandhi_test
+
+test:
+	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)
+	psql -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' $(TEST_DBNAME)
+	find sql_migrations -name '*.sql' | sort | xargs cat | psql $(TEST_DBNAME) -f -
+	go test -v -coverprofile=coverage.out
+
+test-coverage-html: coverage.out
+	go tool cover -html=coverage.out
+
+coverage.out: test
+
+clean:
+	rm -f activities
