@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/abbot/go-http-auth"
 	_ "github.com/lib/pq"
 )
+
+const domainName = "habitcat.net"
 
 var db *sql.DB
 
@@ -25,11 +28,13 @@ func main() {
 	}
 	defer db.Close()
 
-	http.HandleFunc("/", goalHandler)
-	http.HandleFunc("/update/", goalUpdateHandler)
+	authenticator := auth.NewBasicAuthenticator(domainName, basicAuth)
 
-	http.HandleFunc("/habits", habitHandler)
-	http.HandleFunc("/habits/", habitUpdateHandler)
+	http.HandleFunc("/", auth.JustCheck(authenticator, goalHandler))
+	http.HandleFunc("/update/", auth.JustCheck(authenticator, goalUpdateHandler))
+
+	http.HandleFunc("/habits", auth.JustCheck(authenticator, habitHandler))
+	http.HandleFunc("/habits/", auth.JustCheck(authenticator, habitUpdateHandler))
 
 	staticFileServer := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	http.Handle("/static/", staticFileServer)
@@ -37,6 +42,13 @@ func main() {
 
 	log.Println("Server listening on http://0.0.0.0:" + port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func basicAuth(user, realm string) string {
+	if user == "snik" {
+		return "$1$dlPL2MqE$oQmn16q49SqdmhenQuNgs1" // hello
+	}
+	return ""
 }
 
 func createDBConnection(dbname string) (*sql.DB, error) {

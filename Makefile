@@ -3,19 +3,10 @@
 build: activities
 
 activities: main.go habits.go goals.go
-	env GOOS=linux GOARCH=arm go build
+	go build
 
 deploy: clean activities
-	ssh rpi mkdir -p activities
-	ssh rpi pkill activities || true
-	scp -r activities static templates sql_migrations rpi:activities/
-	ssh rpi "cd activities && dtach -n /tmp/activities.socket ./activities >> /tmp/activities.log 2>&1"
-
-install-server:
-	sudo apt-get install -y postgresql-9.4 postgresql-contrib-9.4
-	createdb -U postgres activities
-	psql -U postgres activities < create_all.sql
-	psql -U postgres activities < load_data.sql
+	git push heroku $$(git rev-parse --abbrev-ref HEAD):master
 
 
 TEST_DBNAME=gandhi_test
