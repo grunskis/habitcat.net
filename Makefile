@@ -5,7 +5,7 @@ build: activities
 activities: main.go habits.go goals.go
 	go build
 
-deploy: clean activities
+deploy:
 	git push heroku $$(git rev-parse --abbrev-ref HEAD):master
 
 
