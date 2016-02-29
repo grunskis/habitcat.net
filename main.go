@@ -35,6 +35,8 @@ func main() {
 
 	http.HandleFunc("/habits", auth.JustCheck(authenticator, habitHandler))
 	http.HandleFunc("/habits/", auth.JustCheck(authenticator, habitUpdateHandler))
+	http.HandleFunc("/habits/new", auth.JustCheck(authenticator, habitNewHandler))
+	http.HandleFunc("/habits/create", auth.JustCheck(authenticator, habitCreateHandler))
 
 	staticFileServer := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
 	http.Handle("/static/", staticFileServer)

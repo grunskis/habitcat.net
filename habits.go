@@ -7,13 +7,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"text/template"
 	"time"
 )
 
+type Period string
+
 const (
-	PeriodWeek  = "week"
-	PeriodMonth = "month"
+	PeriodWeek  Period = "week"
+	PeriodMonth Period = "month"
 )
 
 type habit struct {
@@ -22,6 +25,8 @@ type habit struct {
 	Todo        int
 	Done        int
 	PctDone     int
+	Period      Period
+	Start       time.Time
 }
 
 func habitHandler(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +66,10 @@ func getHabits() []habit {
                      FROM habit_progress p
                      WHERE h.id = p.habit_id
                        AND p.created >= date_trunc(h.period::text, now())
-                       AND p.created < date_trunc(h.period::text, now()) + ('1 ' || h.period)::interval)
-                   FROM habit h`
+                       AND p.created < date_trunc(h.period::text, now()) + ('1 ' || h.period)::interval),
+                    period,
+                    start
+                  FROM habit h`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -70,11 +77,12 @@ func getHabits() []habit {
 	}
 
 	var habits []habit
-	var id, description string
+	var id, description, period string
 	var done, todo int
+	var start time.Time
 
 	for rows.Next() {
-		if err := rows.Scan(&id, &description, &todo, &done); err != nil {
+		if err := rows.Scan(&id, &description, &todo, &done, &period, &start); err != nil {
 			log.Fatal(err)
 		}
 		habits = append(habits, habit{
@@ -83,6 +91,8 @@ func getHabits() []habit {
 			Todo:        todo,
 			Done:        done,
 			PctDone:     int(float64(done) / float64(todo) * 100),
+			Period:      Period(period),
+			Start:       start,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -100,15 +110,18 @@ func getHabit(uuid string) (*habit, error) {
                      FROM habit_progress p
                      WHERE h.id = p.habit_id
                        AND p.created >= date_trunc(h.period::text, now())
-                       AND p.created < date_trunc(h.period::text, now()) + ('1 ' || h.period)::interval)
-                   FROM habit h
-                   WHERE h.id = $1`
+                       AND p.created < date_trunc(h.period::text, now()) + ('1 ' || h.period)::interval),
+                    period,
+                    start
+                  FROM habit h
+                  WHERE h.id = $1`
 
-	var id, description string
+	var id, description, period string
 	var done, todo int
+	var start time.Time
 
 	row := db.QueryRow(query, uuid)
-	if err := row.Scan(&id, &description, &todo, &done); err != nil {
+	if err := row.Scan(&id, &description, &todo, &done, &period, &start); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("habit not found")
 		} else {
@@ -122,6 +135,8 @@ func getHabit(uuid string) (*habit, error) {
 		Todo:        todo,
 		Done:        done,
 		PctDone:     int(float64(done) / float64(todo) * 100),
+		Period:      Period(period),
+		Start:       start,
 	}, nil
 }
 
@@ -181,4 +196,59 @@ func totalPointsThisWeek(habits []habit) (int, int) {
 func currentWeekNumber(t time.Time) int {
 	_, week := t.ISOWeek()
 	return week
+}
+
+func habitNewHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	t, err := template.ParseFiles("templates/habits_new.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = t.Execute(w, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func habitCreateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO validation
+	todo, err := strconv.Atoi(r.FormValue("todo"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	period := Period(r.FormValue("period"))
+	description := r.FormValue("description")
+
+	newHabit := habit{
+		Description: description,
+		Period:      period,
+		Todo:        todo,
+	}
+	createHabit(&newHabit)
+
+	http.Redirect(w, r, "/habits", http.StatusFound)
+}
+
+func createHabit(h *habit) (*string, error) {
+	var id string
+
+	query := "INSERT INTO habit (description, points, period, start) VALUES ($1, $2, $3, $4) RETURNING id"
+	err := db.QueryRow(query, h.Description, h.Todo, string(h.Period), h.Start).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &id, nil
 }

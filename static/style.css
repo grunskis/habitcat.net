@@ -41,13 +41,12 @@ td.progress-details {
     text-align: center;
 }
 
-
-ul#menu {
+.menu, .form {
     list-style-type: none;
     margin: 0;
     padding: 0;
 }
 
-ul#menu li {
+.menu li {
     display: inline;
 }

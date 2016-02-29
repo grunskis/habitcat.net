@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,18 +30,6 @@ func truncateDatabase() {
 	db.Exec("TRUNCATE habit CASCADE")
 }
 
-func createHabit(description string, points int, period string, start time.Time) string {
-	var id string
-
-	query := "INSERT INTO habit (description, points, period, start) VALUES ($1, $2, $3, $4) RETURNING id"
-	err := db.QueryRow(query, description, points, period, start).Scan(&id)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return id
-}
-
 func createHabitProgress(id string, delta int, created *time.Time) {
 	if created == nil {
 		db.Exec("INSERT INTO habit_progress (habit_id, delta) VALUES ($1, $2)", id, delta)
@@ -48,8 +38,17 @@ func createHabitProgress(id string, delta int, created *time.Time) {
 	}
 }
 
+func newHabit(description string, points int, period Period, start time.Time) *habit {
+	return &habit{
+		Description: description,
+		Todo:        points,
+		Period:      period,
+		Start:       start,
+	}
+}
+
 func TestGetHabitsNoProgress(t *testing.T) {
-	createHabit("Test", 1, PeriodWeek, time.Now())
+	createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
 	defer truncateDatabase()
 
 	habits := getHabits()
@@ -67,8 +66,8 @@ func TestGetHabitsNoProgress(t *testing.T) {
 }
 
 func TestGetHabitsWithProgress(t *testing.T) {
-	id := createHabit("Test", 1, PeriodWeek, time.Now())
-	createHabitProgress(id, 1, nil)
+	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
+	createHabitProgress(*id, 1, nil)
 	defer truncateDatabase()
 
 	habits := getHabits()
@@ -88,9 +87,9 @@ func TestGetHabitsWithProgress(t *testing.T) {
 func TestGetHabitsWithProgressForCurrentPeriodOnly(t *testing.T) {
 	now := time.Now()
 	dt := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	id := createHabit("Test", 2, PeriodWeek, dt)
-	createHabitProgress(id, 1, &dt)
-	createHabitProgress(id, 1, &now)
+	id, _ := createHabit(newHabit("Test", 2, PeriodWeek, dt))
+	createHabitProgress(*id, 1, &dt)
+	createHabitProgress(*id, 1, &now)
 
 	habits := getHabits()
 	if len(habits) != 1 {
@@ -107,10 +106,10 @@ func TestGetHabitsWithProgressForCurrentPeriodOnly(t *testing.T) {
 }
 
 func TestGetHabitExists(t *testing.T) {
-	id := createHabit("Test", 1, PeriodWeek, time.Now())
+	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
 	defer truncateDatabase()
 
-	habit, err := getHabit(id)
+	habit, err := getHabit(*id)
 	if err != nil {
 		t.Errorf("Expecting err to be nil")
 	}
@@ -148,10 +147,10 @@ func TestGetHabitError(t *testing.T) {
 }
 
 func TestUpdateHabitProgressSuccess(t *testing.T) {
-	id := createHabit("Habit", 2, PeriodWeek, time.Now())
+	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
 	defer truncateDatabase()
 
-	h, err := updateHabitProgress(id)
+	h, err := updateHabitProgress(*id)
 	if err != nil {
 		t.Errorf("Expected err to be nil, found %v", err)
 	}
@@ -164,7 +163,7 @@ func TestUpdateHabitProgressSuccess(t *testing.T) {
 }
 
 func TestUpdateHabitProgressNotFound(t *testing.T) {
-	createHabit("Habit", 2, PeriodWeek, time.Now())
+	createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
 	defer truncateDatabase()
 
 	newPct, err := updateHabitProgress(uuidForTests)
@@ -177,10 +176,10 @@ func TestUpdateHabitProgressNotFound(t *testing.T) {
 }
 
 func TestHabitUpdateHandlerSuccess(t *testing.T) {
-	id := createHabit("Habit", 2, PeriodWeek, time.Now())
+	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
 	defer truncateDatabase()
 
-	url := "https://localhost/habits/" + id
+	url := "https://localhost/habits/" + *id
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -252,7 +251,7 @@ func TestHabitUpdateHandlerWrongMethod(t *testing.T) {
 
 func TestTotalPointsThisWeek(t *testing.T) {
 	habits := []habit{
-		habit{"id1", "description", 2, 1, 50},
+		habit{"id1", "description", 2, 1, 50, PeriodWeek, time.Now()},
 	}
 	done, todo := totalPointsThisWeek(habits)
 	if done != 1 {
@@ -268,5 +267,138 @@ func TestCurrentWeekNumber(t *testing.T) {
 	week := currentWeekNumber(dt)
 	if week != 2 {
 		t.Errorf("Expected 2, got %v", week)
+	}
+}
+
+func TestCreateHabitSuccessful(t *testing.T) {
+	defer truncateDatabase()
+
+	description := "description"
+	todo := 33
+	period := PeriodMonth
+	start := time.Date(2016, time.January, 11, 0, 0, 0, 0, time.UTC)
+	id, _ := createHabit(newHabit(description, todo, period, start))
+
+	habit, err := getHabit(*id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if habit.Description != description {
+		t.Errorf("Expected %v, got %v", description, habit.Description)
+	}
+	if habit.Todo != todo {
+		t.Errorf("Expected %v, got %v", todo, habit.Todo)
+	}
+	if habit.Period != period {
+		t.Errorf("Expected %v, got %v", period, habit.Period)
+	}
+	if habit.Start.Format("2006-01-11") != start.Format("2006-01-11") {
+		t.Errorf("Expected %v, got %v", start.Format("2006-01-11"), habit.Start.Format("2006-01-11"))
+	}
+}
+
+func TestCreateHabitFailure(t *testing.T) {
+	defer truncateDatabase()
+
+	description := "description"
+	todo := 33
+	period := Period("badperiod")
+	start := time.Date(2016, time.January, 11, 0, 0, 0, 0, time.UTC)
+	id, err := createHabit(newHabit(description, todo, period, start))
+	if err == nil {
+		t.Errorf("Expected nil, got %v", err)
+	}
+	if id != nil {
+		t.Errorf("Expected nil, got %v", id)
+	}
+}
+
+func TestNewHabitHandlerSuccess(t *testing.T) {
+	url := "https://localhost/habits/new"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	habitNewHandler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %v", w.Code)
+	}
+	expectedContentType := "text/html"
+	if w.Header().Get("Content-Type") != expectedContentType {
+		t.Errorf("Expected %v, got %v", expectedContentType, w.Header().Get("Content-Type"))
+	}
+}
+
+func TestCreateHabitHandlerSuccess(t *testing.T) {
+	url := "https://localhost/habits/create"
+	description := "d"
+	period := PeriodWeek
+	todo := 33
+	body := fmt.Sprintf("description=%s&period=%s&todo=%d", description, string(period), todo)
+	req, err := http.NewRequest("POST", url, strings.NewReader(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	habitCreateHandler(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Errorf("Expected %v, got %v", http.StatusFound, w.Code)
+	}
+
+	// make sure habit was created
+	habits := getHabits()
+	if len(habits) != 1 {
+		t.Errorf("Expected 1 habit %d found", len(habits))
+	}
+	habit := habits[0]
+	if habit.Description != description {
+		t.Errorf("Expected %v, got %v", description, habit.Done)
+	}
+	if habit.Period != period {
+		t.Errorf("Expected %v, got %v", period, habit.Period)
+	}
+	if habit.Todo != todo {
+		t.Errorf("Expected %v, got %v", todo, habit.Todo)
+	}
+}
+
+func TestCreateHabitHandlerWrongMethod(t *testing.T) {
+	url := "https://localhost/habits/create"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	habitCreateHandler(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected %v, got %v", http.StatusMethodNotAllowed, w.Code)
+	}
+}
+
+func TestHabitHandlerSuccess(t *testing.T) {
+	url := "https://localhost/habits"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	habitHandler(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %v, got %v", http.StatusOK, w.Code)
+	}
+	expectedContentType := "text/html"
+	if w.Header().Get("Content-Type") != expectedContentType {
+		t.Errorf("Expected %v, got %v", expectedContentType, w.Header().Get("Content-Type"))
 	}
 }

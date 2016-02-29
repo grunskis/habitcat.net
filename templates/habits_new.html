@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/script.js"></script>
+    <title></title>
+  </head>
+  <body>
+    <h1>Add new habit</h1>
+    <form method="POST" action="/habits/create">
+      <ul class="form">
+        <li>
+          <p>
+            <label for="description">Description</label>
+          </p>
+          <input id="description" name="description" type="text" />
+        </li>
+        <li>
+          <p>
+            <label for="period">Period</label>
+          </p>
+          <select id="period" name="period">
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+          </select>
+        </li>
+        <li>
+          <p>
+            <label for="todo">Points to do</label>
+          </p>
+          <input id="todo" name="todo" type="number" value="1" />
+        </li>
+        <li>
+          <p>
+            <button>Add habit</button>
+          </p>
+        </li>
+      </ul>
+    </form>
+  </body>
+</html>

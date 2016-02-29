@@ -7,12 +7,15 @@
     <title>Habits</title>
   </head>
   <body>
-    <ul id="menu">
+    <ul class="menu">
       <li><a href="/">Goals</a></li>
       <li>Habits</li>
     </ul>
 
     <h2>Habits</h2>
+    <ul class="menu">
+      <li><a href="/habits/new">Add new habit</a></li>
+    </ul>
     <h3>Week {{.CurrentWeekNumber}}</h3>
     <table>
       {{range .Habits}}
