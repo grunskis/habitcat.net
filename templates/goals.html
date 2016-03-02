@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/script.js"></script>
+    <title>Goals</title>
+  </head>
+  <body>
+    <ul class="menu">
+      <li>Goals</li>
+      <li><a href="/habits">Habits</a></li>
+    </ul>
+
+    <h2>Goals</h2>
+    <ul class="menu">
+      <li><a href="/goals/new">Add new goal</a></li>
+    </ul>
+    <h3>In progress</h3>
+    <table>
+      {{range .InProgress}}
+      <tr>
+        <td>{{.Description}}</td>
+        <td class="plus">
+          <button onclick="updateActivityProgress('{{.Id}}')">+1</button>
+        </td>
+        <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">
+          <div class="progress">
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%">
+            </div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+
+    <h3>Done</h3>
+    <table>
+      {{range .Done}}
+      <tr>
+        <td>{{.Description}}</td>
+        <td class="pct-done" title="{{.PointsDone}} / {{.PointsTotal}}">
+          <div class="progress">
+            <div id="done-{{.Id}}" style="width: {{.PctDone}}%"></div>
+          </div>
+        </td>
+      </tr>
+      {{end}}
+    </table>
+  </body>
+</html>

@@ -30,8 +30,10 @@ func main() {
 
 	authenticator := auth.NewBasicAuthenticator(domainName, basicAuth)
 
-	http.HandleFunc("/", auth.JustCheck(authenticator, goalHandler))
-	http.HandleFunc("/update/", auth.JustCheck(authenticator, goalUpdateHandler))
+	http.HandleFunc("/", auth.JustCheck(authenticator, indexHandler))
+
+	http.HandleFunc("/goals", auth.JustCheck(authenticator, goalHandler))
+	http.HandleFunc("/goals/", auth.JustCheck(authenticator, goalUpdateHandler))
 
 	http.HandleFunc("/habits", auth.JustCheck(authenticator, habitHandler))
 	http.HandleFunc("/habits/", auth.JustCheck(authenticator, habitUpdateHandler))
@@ -73,4 +75,8 @@ func createDBConnection(dbname string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/goals", http.StatusFound)
 }

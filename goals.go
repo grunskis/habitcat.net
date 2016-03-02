@@ -49,7 +49,7 @@ func goalHandler(w http.ResponseWriter, r *http.Request) {
 func render(w http.ResponseWriter, activities interface{}) {
 	w.Header().Set("Content-Type", "text/html")
 
-	t, err := template.ParseFiles("templates/index.html")
+	t, err := template.ParseFiles("templates/goals.html")
 	if err != nil {
 		log.Fatal(err)
 	}
