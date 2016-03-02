@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"text/template"
 	"time"
+
+	"github.com/gorilla/context"
 )
 
 type goal struct {
@@ -27,7 +29,8 @@ func (m byModified) Less(i, j int) bool { return (m[i].Modified).Before(m[j].Mod
 
 func goalHandler(w http.ResponseWriter, r *http.Request) {
 	var goalsInProgress, goalsDone []goal
-	goals := getGoals()
+	accountId := context.Get(r, "accountId")
+	goals := getGoals(accountId.(string))
 	for _, g := range goals {
 		if g.PctDone >= 100 {
 			goalsDone = append(goalsDone, g)
@@ -62,7 +65,7 @@ func render(w http.ResponseWriter, goals interface{}) {
 	}
 }
 
-func getGoals() []goal {
+func getGoals(accountId string) []goal {
 	var goals []goal
 
 	query := `SELECT id,
@@ -71,9 +74,10 @@ func getGoals() []goal {
                          points_done,
                          points_total,
                          modified
-                  FROM goal`
+                  FROM goal
+                  WHERE account_id = $1`
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, accountId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,20 +116,21 @@ func goalUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newPct := updateGoalPoints(uuid)
+	accountId := context.Get(r, "accountId")
+	newPct := updateGoalPoints(uuid, accountId.(string))
 
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, fmt.Sprint(newPct))
 }
 
-func updateGoalPoints(uuid string) int {
-	_, err := db.Exec("UPDATE goal SET points_done = points_done + 1 WHERE id = $1", uuid)
+func updateGoalPoints(uuid, accountId string) int {
+	_, err := db.Exec("UPDATE goal SET points_done = points_done + 1 WHERE id = $1 AND account_id = $2", uuid, accountId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var pctDone int
-	row := db.QueryRow("SELECT ROUND(100.0 * points_done / points_total) FROM goal WHERE id = $1", uuid)
+	row := db.QueryRow("SELECT ROUND(100.0 * points_done / points_total) FROM goal WHERE id = $1 AND account_id = $2", uuid, accountId)
 	if err := row.Scan(&pctDone); err != nil {
 		log.Fatal(err)
 	}
@@ -168,7 +173,8 @@ func goalCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Description: description,
 		PointsTotal: todo,
 	}
-	_, err = createGoal(&newGoal)
+	accountId := context.Get(r, "accountId")
+	_, err = createGoal(&newGoal, accountId.(string))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -176,11 +182,11 @@ func goalCreateHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/goals", http.StatusFound)
 }
 
-func createGoal(g *goal) (*string, error) {
+func createGoal(g *goal, accountId string) (*string, error) {
 	var id string
 
-	query := "INSERT INTO goal (description, points_total) VALUES ($1, $2) RETURNING id"
-	err := db.QueryRow(query, g.Description, g.PointsTotal).Scan(&id)
+	query := "INSERT INTO goal (description, points_total, account_id) VALUES ($1, $2, $3) RETURNING id"
+	err := db.QueryRow(query, g.Description, g.PointsTotal, accountId).Scan(&id)
 	if err != nil {
 		return nil, err
 	}

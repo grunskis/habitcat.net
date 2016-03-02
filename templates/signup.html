@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css" type="text/css">
+    <script src="/static/script.js"></script>
+    <title>HabitCat - Sign up</title>
+  </head>
+  <body>
+    <h1>Sign up</h1>
+    <form method="POST" action="/signup">
+      <ul class="form">
+        <li>
+          <p>
+            <label for="email">Email</label>
+          </p>
+          <input id="email" name="email" type="text" required />
+        </li>
+        <li>
+          <p>
+            <label for="password">Password</label>
+          </p>
+          <input id="password" name="password" type="password" required />
+        </li>
+        <li>
+          <p>
+            <button>Sign up</button>
+          </p>
+        </li>
+      </ul>
+    </form>
+    {{if .ErrorMessage}}
+    <div style="color: red">
+      <p>{{.ErrorMessage}}</p>
+    </div>
+    {{end}}
+  </body>
+</html>

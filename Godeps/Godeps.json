@@ -1,14 +1,16 @@
 {
 	"ImportPath": "bitbucket.org/grunskis/activities",
 	"GoVersion": "go1.6",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/abbot/go-http-auth",
-			"Comment": "v0.3-10-gca62df3",
-			"Rev": "ca62df34b58d26b6a064246c21c0a18f97813173"
+			"ImportPath": "github.com/gorilla/context",
+			"Comment": "v1.1-4-gaed02d1",
+			"Rev": "aed02d124ae4a0e94fea4541c8effd05bf0c8296"
+		},
+		{
+			"ImportPath": "github.com/gorilla/securecookie",
+			"Comment": "v1.1-2-gff35634",
+			"Rev": "ff356348f74133a59d3e93aa24b5b4551b6fe90d"
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
@@ -22,10 +24,6 @@
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
 			"Rev": "1f22c0103821b9390939b6776727195525381532"
-		},
-		{
-			"ImportPath": "golang.org/x/net/context",
-			"Rev": "f315505cf3349909cdf013ea56690da34e96a451"
 		}
 	]
 }

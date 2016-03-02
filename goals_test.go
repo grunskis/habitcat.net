@@ -5,10 +5,11 @@ import "testing"
 func TestGetGoalsSuccess(t *testing.T) {
 	description := "doc"
 	points := 15
-	createGoal(&goal{Description: description, PointsTotal: points})
+	account, _ := CreateAccount("test@habitcat.net", "secret")
+	createGoal(&goal{Description: description, PointsTotal: points}, account.Id)
 	defer truncateDatabase()
 
-	goals := getGoals()
+	goals := getGoals(account.Id)
 	if len(goals) != 1 {
 		t.Errorf("Expected 1, got %v found", len(goals))
 	}

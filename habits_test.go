@@ -11,9 +11,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/context"
 )
 
 const uuidForTests = "00000000-0000-0000-0000-000000000000"
+const emailForTests = "test@habitcat.net"
+const passwordForTests = "secret"
 
 func TestMain(m *testing.M) {
 	var err error
@@ -29,6 +33,7 @@ func TestMain(m *testing.M) {
 func truncateDatabase() {
 	db.Exec("TRUNCATE habit CASCADE")
 	db.Exec("TRUNCATE goal CASCADE")
+	db.Exec("TRUNCATE account CASCADE")
 }
 
 func createHabitProgress(id string, delta int, created *time.Time) {
@@ -49,10 +54,11 @@ func newHabit(description string, points int, period Period, start time.Time) *h
 }
 
 func TestGetHabitsNoProgress(t *testing.T) {
-	createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	createHabit(newHabit("Test", 1, PeriodWeek, time.Now()), account.Id)
 	defer truncateDatabase()
 
-	habits := getHabits()
+	habits := getHabits(account.Id)
 	if len(habits) != 1 {
 		t.Errorf("Expected 1 habit %d found", len(habits))
 	}
@@ -67,11 +73,12 @@ func TestGetHabitsNoProgress(t *testing.T) {
 }
 
 func TestGetHabitsWithProgress(t *testing.T) {
-	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()), account.Id)
 	createHabitProgress(*id, 1, nil)
 	defer truncateDatabase()
 
-	habits := getHabits()
+	habits := getHabits(account.Id)
 	if len(habits) != 1 {
 		t.Errorf("Expected 1 habit %d found", len(habits))
 	}
@@ -86,13 +93,16 @@ func TestGetHabitsWithProgress(t *testing.T) {
 }
 
 func TestGetHabitsWithProgressForCurrentPeriodOnly(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
+
 	now := time.Now()
 	dt := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-	id, _ := createHabit(newHabit("Test", 2, PeriodWeek, dt))
+	id, _ := createHabit(newHabit("Test", 2, PeriodWeek, dt), account.Id)
 	createHabitProgress(*id, 1, &dt)
 	createHabitProgress(*id, 1, &now)
 
-	habits := getHabits()
+	habits := getHabits(account.Id)
 	if len(habits) != 1 {
 		t.Errorf("Expected 1 habit %d found", len(habits))
 	}
@@ -107,10 +117,11 @@ func TestGetHabitsWithProgressForCurrentPeriodOnly(t *testing.T) {
 }
 
 func TestGetHabitExists(t *testing.T) {
-	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	id, _ := createHabit(newHabit("Test", 1, PeriodWeek, time.Now()), account.Id)
 	defer truncateDatabase()
 
-	habit, err := getHabit(*id)
+	habit, err := getHabit(*id, account.Id)
 	if err != nil {
 		t.Errorf("Expecting err to be nil")
 	}
@@ -120,7 +131,9 @@ func TestGetHabitExists(t *testing.T) {
 }
 
 func TestGetHabitNotFound(t *testing.T) {
-	habit, err := getHabit("00000000-0000-0000-0000-000000000000")
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
+	habit, err := getHabit("00000000-0000-0000-0000-000000000000", account.Id)
 	if habit != nil {
 		t.Errorf("Expected nil, found %v", habit)
 	}
@@ -134,8 +147,10 @@ func TestGetHabitError(t *testing.T) {
 	// since this is run in a separate process, lines touched by
 	// this test will not appear in code coverage report
 
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
 	if os.Getenv("BE_CRASHER") == "1" {
-		getHabit("bad")
+		getHabit("bad", account.Id)
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestGetHabitError")
@@ -148,10 +163,11 @@ func TestGetHabitError(t *testing.T) {
 }
 
 func TestUpdateHabitProgressSuccess(t *testing.T) {
-	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()), account.Id)
 	defer truncateDatabase()
 
-	h, err := updateHabitProgress(*id)
+	h, err := updateHabitProgress(*id, account.Id)
 	if err != nil {
 		t.Errorf("Expected err to be nil, found %v", err)
 	}
@@ -164,10 +180,11 @@ func TestUpdateHabitProgressSuccess(t *testing.T) {
 }
 
 func TestUpdateHabitProgressNotFound(t *testing.T) {
-	createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()), account.Id)
 	defer truncateDatabase()
 
-	newPct, err := updateHabitProgress(uuidForTests)
+	newPct, err := updateHabitProgress(uuidForTests, account.Id)
 	if newPct != nil {
 		t.Errorf("Expected newPct to be nil, found %v", newPct)
 	}
@@ -177,7 +194,8 @@ func TestUpdateHabitProgressNotFound(t *testing.T) {
 }
 
 func TestHabitUpdateHandlerSuccess(t *testing.T) {
-	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()))
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	id, _ := createHabit(newHabit("Habit", 2, PeriodWeek, time.Now()), account.Id)
 	defer truncateDatabase()
 
 	url := "https://localhost/habits/" + *id
@@ -185,6 +203,8 @@ func TestHabitUpdateHandlerSuccess(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	context.Set(req, "accountId", account.Id)
+	defer context.Clear(req)
 
 	w := httptest.NewRecorder()
 	habitUpdateHandler(w, req)
@@ -206,11 +226,16 @@ func TestHabitUpdateHandlerSuccess(t *testing.T) {
 }
 
 func TestHabitUpdateHandlerNotFound(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
+
 	url := "https://localhost/habits/" + uuidForTests
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+	context.Set(req, "accountId", account.Id)
+	defer context.Clear(req)
 
 	w := httptest.NewRecorder()
 	habitUpdateHandler(w, req)
@@ -272,15 +297,16 @@ func TestCurrentWeekNumber(t *testing.T) {
 }
 
 func TestCreateHabitSuccessful(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
 	defer truncateDatabase()
 
 	description := "description"
 	todo := 33
 	period := PeriodMonth
 	start := time.Date(2016, time.January, 11, 0, 0, 0, 0, time.UTC)
-	id, _ := createHabit(newHabit(description, todo, period, start))
+	id, _ := createHabit(newHabit(description, todo, period, start), account.Id)
 
-	habit, err := getHabit(*id)
+	habit, err := getHabit(*id, account.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,13 +325,14 @@ func TestCreateHabitSuccessful(t *testing.T) {
 }
 
 func TestCreateHabitFailure(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
 	defer truncateDatabase()
 
 	description := "description"
 	todo := 33
 	period := Period("badperiod")
 	start := time.Date(2016, time.January, 11, 0, 0, 0, 0, time.UTC)
-	id, err := createHabit(newHabit(description, todo, period, start))
+	id, err := createHabit(newHabit(description, todo, period, start), account.Id)
 	if err == nil {
 		t.Errorf("Expected nil, got %v", err)
 	}
@@ -334,6 +361,9 @@ func TestNewHabitHandlerSuccess(t *testing.T) {
 }
 
 func TestCreateHabitHandlerSuccess(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
+
 	url := "https://localhost/habits/create"
 	description := "d"
 	period := PeriodWeek
@@ -345,6 +375,9 @@ func TestCreateHabitHandlerSuccess(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	context.Set(req, "accountId", account.Id)
+	defer context.Clear(req)
+
 	w := httptest.NewRecorder()
 	habitCreateHandler(w, req)
 
@@ -353,7 +386,7 @@ func TestCreateHabitHandlerSuccess(t *testing.T) {
 	}
 
 	// make sure habit was created
-	habits := getHabits()
+	habits := getHabits(account.Id)
 	if len(habits) != 1 {
 		t.Errorf("Expected 1 habit %d found", len(habits))
 	}
@@ -386,11 +419,16 @@ func TestCreateHabitHandlerWrongMethod(t *testing.T) {
 }
 
 func TestHabitHandlerSuccess(t *testing.T) {
+	account, _ := CreateAccount(emailForTests, passwordForTests)
+	defer truncateDatabase()
+
 	url := "https://localhost/habits"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+	context.Set(req, "accountId", account.Id)
+	defer context.Clear(req)
 
 	w := httptest.NewRecorder()
 	habitHandler(w, req)

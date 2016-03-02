@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"text/template"
 	"time"
+
+	"github.com/gorilla/context"
 )
 
 type Period string
@@ -37,9 +39,10 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	habits := getHabits()
+	accountId := context.Get(r, "accountId")
+	habits := getHabits(accountId.(string))
 	done, todo := totalPointsThisWeek(habits)
-	context := struct {
+	data := struct {
 		Habits            []habit
 		ThisWeekDone      int
 		ThisWeekTodo      int
@@ -52,13 +55,13 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 		currentWeekNumber(time.Now()),
 		calcPercentage(done, todo),
 	}
-	err = t.Execute(w, context)
+	err = t.Execute(w, data)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func getHabits() []habit {
+func getHabits(accountId string) []habit {
 	query := `SELECT id,
                     description,
                     points,
@@ -70,9 +73,9 @@ func getHabits() []habit {
                     period,
                     start
                   FROM habit h
-                  WHERE retired IS NULL`
+                  WHERE h.account_id = $1 AND retired IS NULL`
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, accountId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -103,7 +106,7 @@ func getHabits() []habit {
 	return habits
 }
 
-func getHabit(uuid string) (*habit, error) {
+func getHabit(uuid, accountId string) (*habit, error) {
 	query := `SELECT id,
                     description,
                     points,
@@ -115,13 +118,13 @@ func getHabit(uuid string) (*habit, error) {
                     period,
                     start
                   FROM habit h
-                  WHERE h.id = $1`
+                  WHERE h.id = $1 AND h.account_id = $2`
 
 	var id, description, period string
 	var done, todo int
 	var start time.Time
 
-	row := db.QueryRow(query, uuid)
+	row := db.QueryRow(query, uuid, accountId)
 	if err := row.Scan(&id, &description, &todo, &done, &period, &start); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("habit not found")
@@ -154,7 +157,8 @@ func habitUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	h, err := updateHabitProgress(uuid)
+	accountId := context.Get(r, "accountId")
+	h, err := updateHabitProgress(uuid, accountId.(string))
 	if err != nil {
 		http.Error(w, "", http.StatusNotFound)
 		return
@@ -167,8 +171,8 @@ func habitUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateHabitProgress(uuid string) (*habit, error) {
-	h, err := getHabit(uuid)
+func updateHabitProgress(uuid, accountId string) (*habit, error) {
+	h, err := getHabit(uuid, accountId)
 	if err != nil {
 		return nil, errors.New("habit not found")
 	}
@@ -237,16 +241,17 @@ func habitCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Period:      period,
 		Todo:        todo,
 	}
-	createHabit(&newHabit)
+	accountId := context.Get(r, "accountId")
+	createHabit(&newHabit, accountId.(string))
 
 	http.Redirect(w, r, "/habits", http.StatusFound)
 }
 
-func createHabit(h *habit) (*string, error) {
+func createHabit(h *habit, accountId string) (*string, error) {
 	var id string
 
-	query := "INSERT INTO habit (description, points, period, start) VALUES ($1, $2, $3, $4) RETURNING id"
-	err := db.QueryRow(query, h.Description, h.Todo, string(h.Period), h.Start).Scan(&id)
+	query := "INSERT INTO habit (description, points, period, start, account_id) VALUES ($1, $2, $3, $4, $5) RETURNING id"
+	err := db.QueryRow(query, h.Description, h.Todo, string(h.Period), h.Start, accountId).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
