@@ -28,6 +28,7 @@ func TestMain(m *testing.M) {
 
 func truncateDatabase() {
 	db.Exec("TRUNCATE habit CASCADE")
+	db.Exec("TRUNCATE goal CASCADE")
 }
 
 func createHabitProgress(id string, delta int, created *time.Time) {
