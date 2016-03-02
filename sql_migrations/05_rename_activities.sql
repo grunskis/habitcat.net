@@ -1,0 +1,2 @@
+ALTER TABLE IF EXISTS activities
+  RENAME TO goal;

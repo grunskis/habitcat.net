@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type activity struct {
+type goal struct {
 	Id          string
 	Description string
 	PointsDone  int
@@ -19,35 +19,36 @@ type activity struct {
 	Modified    time.Time
 }
 
-type byModified []activity
+type byModified []goal
 
 func (m byModified) Len() int           { return len(m) }
 func (m byModified) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 func (m byModified) Less(i, j int) bool { return (m[i].Modified).Before(m[j].Modified) }
 
 func goalHandler(w http.ResponseWriter, r *http.Request) {
-	activities := getActivities()
-	var inProgressActivities, doneActivities []activity
-	for _, a := range activities {
-		if a.PctDone >= 100 {
-			doneActivities = append(doneActivities, a)
+	var goalsInProgress, goalsDone []goal
+	goals := getGoals()
+	for _, g := range goals {
+		if g.PctDone >= 100 {
+			goalsDone = append(goalsDone, g)
 		} else {
-			inProgressActivities = append(inProgressActivities, a)
+			goalsInProgress = append(goalsInProgress, g)
 		}
 	}
 	context := struct {
-		InProgress []activity
-		Done       []activity
+		InProgress []goal
+		Done       []goal
 	}{
-		inProgressActivities,
-		doneActivities,
+		goalsInProgress,
+		goalsDone,
 	}
 	sort.Sort(sort.Reverse(byModified(context.InProgress)))
 	sort.Sort(sort.Reverse(byModified(context.Done)))
+
 	render(w, context)
 }
 
-func render(w http.ResponseWriter, activities interface{}) {
+func render(w http.ResponseWriter, goals interface{}) {
 	w.Header().Set("Content-Type", "text/html")
 
 	t, err := template.ParseFiles("templates/goals.html")
@@ -55,21 +56,22 @@ func render(w http.ResponseWriter, activities interface{}) {
 		log.Fatal(err)
 	}
 
-	err = t.Execute(w, activities)
+	err = t.Execute(w, goals)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func getActivities() []activity {
-	var activities []activity
+func getGoals() []goal {
+	var goals []goal
 
 	query := `SELECT id,
                          description,
                          ROUND(100.0 * points_done / points_total),
                          points_done,
                          points_total,
-                         modified FROM activities`
+                         modified
+                  FROM goal`
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -83,7 +85,7 @@ func getActivities() []activity {
 		if err := rows.Scan(&id, &description, &pctDone, &pointsDone, &pointsTotal, &modified); err != nil {
 			log.Fatal(err)
 		}
-		activities = append(activities, activity{
+		goals = append(goals, goal{
 			Id:          id,
 			Description: description,
 			PctDone:     pctDone,
@@ -96,7 +98,7 @@ func getActivities() []activity {
 		log.Fatal(err)
 	}
 
-	return activities
+	return goals
 }
 
 func goalUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,30 +106,29 @@ func goalUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusMethodNotAllowed)
 		return
 	}
-	activityUUID := r.URL.Path[len("/goals/"):]
-	if len(activityUUID) == 0 {
+	uuid := r.URL.Path[len("/goals/"):]
+	if len(uuid) == 0 {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
-	newPct := updateActivityPoints(activityUUID)
+	newPct := updateGoalPoints(uuid)
 
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, fmt.Sprint(newPct))
 }
 
-func updateActivityPoints(activityUUID string) int {
-	_, err := db.Exec("UPDATE activities SET points_done = points_done + 1 WHERE id = $1", activityUUID)
+func updateGoalPoints(uuid string) int {
+	_, err := db.Exec("UPDATE goal SET points_done = points_done + 1 WHERE id = $1", uuid)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var pctDone int
-	row := db.QueryRow("SELECT ROUND(100.0 * points_done / points_total) FROM activities WHERE id = $1", activityUUID)
+	row := db.QueryRow("SELECT ROUND(100.0 * points_done / points_total) FROM goal WHERE id = $1", uuid)
 	if err := row.Scan(&pctDone); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("updated activity:", activityUUID, "new pct:", pctDone)
 	return pctDone
 }
 
@@ -163,11 +164,11 @@ func goalCreateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	newActivity := activity{
+	newGoal := goal{
 		Description: description,
 		PointsTotal: todo,
 	}
-	_, err = createGoal(&newActivity)
+	_, err = createGoal(&newGoal)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -175,11 +176,11 @@ func goalCreateHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/goals", http.StatusFound)
 }
 
-func createGoal(a *activity) (*string, error) {
+func createGoal(g *goal) (*string, error) {
 	var id string
 
-	query := "INSERT INTO activities (description, points_total) VALUES ($1, $2) RETURNING id"
-	err := db.QueryRow(query, a.Description, a.PointsTotal).Scan(&id)
+	query := "INSERT INTO goal (description, points_total) VALUES ($1, $2) RETURNING id"
+	err := db.QueryRow(query, g.Description, g.PointsTotal).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
