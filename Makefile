@@ -9,7 +9,7 @@ deploy:
 	git push heroku $$(git rev-parse --abbrev-ref HEAD):master
 
 
-TEST_DBNAME=gandhi_test
+TEST_DBNAME=habitcat_test
 
 test:
 	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)
