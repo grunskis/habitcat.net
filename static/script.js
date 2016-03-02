@@ -76,7 +76,7 @@ events.subscribe('progressUpdated', function (uuid, progress) {
 });
 
 function updateActivityProgress(uuid) {
-    ajax("POST", "/update/" + uuid, function (body) {
+    ajax("POST", "/goals/" + uuid, function (body) {
         var progress = document.getElementById("done-" + uuid);
         progress.style.width = body + "%";
     }, function (statusCode, body) {

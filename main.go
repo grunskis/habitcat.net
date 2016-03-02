@@ -34,6 +34,8 @@ func main() {
 
 	http.HandleFunc("/goals", auth.JustCheck(authenticator, goalHandler))
 	http.HandleFunc("/goals/", auth.JustCheck(authenticator, goalUpdateHandler))
+	http.HandleFunc("/goals/new", auth.JustCheck(authenticator, goalNewHandler))
+	http.HandleFunc("/goals/create", auth.JustCheck(authenticator, goalCreateHandler))
 
 	http.HandleFunc("/habits", auth.JustCheck(authenticator, habitHandler))
 	http.HandleFunc("/habits/", auth.JustCheck(authenticator, habitUpdateHandler))

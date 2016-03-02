@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	"text/template"
 	"time"
 )
@@ -103,7 +104,7 @@ func goalUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusMethodNotAllowed)
 		return
 	}
-	activityUUID := r.URL.Path[len("/update/"):]
+	activityUUID := r.URL.Path[len("/goals/"):]
 	if len(activityUUID) == 0 {
 		http.Error(w, "", http.StatusBadRequest)
 		return
@@ -128,4 +129,60 @@ func updateActivityPoints(activityUUID string) int {
 	}
 	log.Println("updated activity:", activityUUID, "new pct:", pctDone)
 	return pctDone
+}
+
+func goalNewHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	t, err := template.ParseFiles("templates/goals_new.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = t.Execute(w, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func goalCreateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO validation
+	description := r.FormValue("description")
+	todo, err := strconv.Atoi(r.FormValue("todo"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	newActivity := activity{
+		Description: description,
+		PointsTotal: todo,
+	}
+	_, err = createGoal(&newActivity)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.Redirect(w, r, "/goals", http.StatusFound)
+}
+
+func createGoal(a *activity) (*string, error) {
+	var id string
+
+	query := "INSERT INTO activities (description, points_total) VALUES ($1, $2) RETURNING id"
+	err := db.QueryRow(query, a.Description, a.PointsTotal).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &id, nil
 }
