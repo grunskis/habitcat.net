@@ -18,7 +18,7 @@ install-server:
 	psql -U postgres activities < load_data.sql
 
 
-TEST_DBNAME=gandhi_test
+TEST_DBNAME=habitcat_test
 
 test:
 	dropdb --if-exists $(TEST_DBNAME) && createdb $(TEST_DBNAME)

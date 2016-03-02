@@ -17,7 +17,7 @@ const uuidForTests = "00000000-0000-0000-0000-000000000000"
 
 func TestMain(m *testing.M) {
 	var err error
-	db, err = createDBConnection("gandhi_test")
+	db, err = createDBConnection("habitcat_test")
 	if err != nil {
 		log.Fatalln("opening db connection failed:", err)
 	}
