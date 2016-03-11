@@ -403,3 +403,17 @@ func TestHabitHandlerSuccess(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expectedContentType, w.Header().Get("Content-Type"))
 	}
 }
+
+func TestCalcPercentage(t *testing.T) {
+	expected := 50
+	actual := calcPercentage(2, 4)
+	if expected != actual {
+		t.Errorf("Expected %v, got %v", expected, actual)
+	}
+
+	expected = 100
+	actual = calcPercentage(5, 4)
+	if expected != actual {
+		t.Errorf("Expected %v, got %v", expected, actual)
+	}
+}

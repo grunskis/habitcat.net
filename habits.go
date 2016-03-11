@@ -50,7 +50,7 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 		done,
 		todo,
 		currentWeekNumber(time.Now()),
-		int(float64(done) / float64(todo) * 100),
+		calcPercentage(done, todo),
 	}
 	err = t.Execute(w, context)
 	if err != nil {
@@ -90,7 +90,7 @@ func getHabits() []habit {
 			Description: description,
 			Todo:        todo,
 			Done:        done,
-			PctDone:     int(float64(done) / float64(todo) * 100),
+			PctDone:     calcPercentage(done, todo),
 			Period:      Period(period),
 			Start:       start,
 		})
@@ -134,7 +134,7 @@ func getHabit(uuid string) (*habit, error) {
 		Description: description,
 		Todo:        todo,
 		Done:        done,
-		PctDone:     int(float64(done) / float64(todo) * 100),
+		PctDone:     calcPercentage(done, todo),
 		Period:      Period(period),
 		Start:       start,
 	}, nil
@@ -180,7 +180,7 @@ func updateHabitProgress(uuid string) (*habit, error) {
 
 	// TODO improve this
 	h.Done = h.Done + delta
-	h.PctDone = int(float64(h.Done) / float64(h.Todo) * 100)
+	h.PctDone = calcPercentage(h.Done, h.Todo)
 	return h, nil
 }
 
@@ -251,4 +251,12 @@ func createHabit(h *habit) (*string, error) {
 	}
 
 	return &id, nil
+}
+
+func calcPercentage(a, b int) int {
+	value := int(float64(a) / float64(b) * 100)
+	if value > 100 {
+		value = 100
+	}
+	return value
 }
