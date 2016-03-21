@@ -69,7 +69,8 @@ func getHabits() []habit {
                        AND p.created < date_trunc(h.period::text, now()) + ('1 ' || h.period)::interval),
                     period,
                     start
-                  FROM habit h`
+                  FROM habit h
+                  WHERE retired IS NULL`
 
 	rows, err := db.Query(query)
 	if err != nil {
