@@ -32,13 +32,6 @@ type habit struct {
 }
 
 func habitHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	t, err := template.ParseFiles("templates/habits.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	accountId := context.Get(r, "accountId")
 	habits := getHabits(accountId.(string))
 	done, todo := totalPointsThisWeek(habits)
@@ -55,9 +48,33 @@ func habitHandler(w http.ResponseWriter, r *http.Request) {
 		currentWeekNumber(time.Now()),
 		calcPercentage(done, todo),
 	}
-	err = t.Execute(w, data)
-	if err != nil {
-		log.Fatal(err)
+
+	renderResponse(w, r, data, "templates/habits.html")
+}
+
+func renderResponse(w http.ResponseWriter, r *http.Request, data interface{}, templatePath string) {
+	acceptHeader, ok := r.Header["Accept"]
+	if ok && len(acceptHeader) > 0 && acceptHeader[0] == "application/json" {
+		b, err := json.Marshal(data)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		fmt.Fprint(w, string(b))
+	} else {
+		t, err := template.ParseFiles(templatePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+
+		err = t.Execute(w, data)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 

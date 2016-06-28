@@ -455,3 +455,27 @@ func TestCalcPercentage(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expected, actual)
 	}
 }
+
+func TestRenderResponseJSON(t *testing.T) {
+	url := "https://localhost/habits"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Add("Accept", "application/json")
+
+	w := httptest.NewRecorder()
+	renderResponse(w, req, "test", "")
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected %v, got %v", http.StatusOK, w.Code)
+	}
+	expectedContentType := "application/json"
+	if w.Header().Get("Content-Type") != expectedContentType {
+		t.Errorf("Expected %v, got %v", expectedContentType, w.Header().Get("Content-Type"))
+	}
+	expectedBody := "\"test\"" // JSON
+	if w.Body.String() != expectedBody {
+		t.Errorf("Expected %v, got %v", expectedBody, w.Body.String())
+	}
+}
